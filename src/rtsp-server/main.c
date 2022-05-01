@@ -10,15 +10,15 @@ void handle_rtsp(sock_t s) {
 	msg = cdk_tcp_recv(s);
 
 	switch (msg->h.p_t) {
-	case TYPE_RTSP_OPTIONS:
+	case TYPE_OPTIONS_REQ:
 		break;
-	case TYPE_RTSP_DESCRIBE:
+	case TYPE_DESCRIBE_REQ:
 		break;
-	case TYPE_RTSP_SETUP:
+	case TYPE_SETUP_REQ:
 		break;
-	case TYPE_RTSP_PLAY:
+	case TYPE_PLAY_REQ:
 		break;
-	case TYPE_RTSP_TEARDOWN:
+	case TYPE_TEARDOWN_REQ:
 		break;
 	default:
 		break;

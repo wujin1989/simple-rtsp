@@ -9,6 +9,8 @@ else()
 	message(FATAL_ERROR "[examples compile]: 32bit os isn't supported!")
 endif()
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 #iso c standard, support c11 and later
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
