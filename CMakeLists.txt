@@ -33,11 +33,13 @@ set(RTSP_SERVER_HDRS
 
 set(RTSP_CLIENT_SRCS 
 	src/rtsp-client/main.c
-    src/rtsp-client/rtsp-client.c)
+    src/rtsp-client/rtsp-client.c
+    src/rtsp-common/rtsp-common.c)
 
 set(RTSP_SERVER_SRCS 
 	src/rtsp-server/main.c
-    src/rtsp-server/rtsp-server.c)
+    src/rtsp-server/rtsp-server.c
+    src/rtsp-common/rtsp-common.c)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RTSP_CLIENT_HDRS} ${RTSP_SERVER_HDRS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RTSP_CLIENT_SRCS} ${RTSP_SERVER_SRCS})
