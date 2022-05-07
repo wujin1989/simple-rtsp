@@ -29,7 +29,7 @@ static bool _initialize_rtsp_req(rtsp_msg_t* req, char* method) {
 	return true;
 }
 
-static bool _send_options(sock_t c, rtsp_msg_t* rsp) {
+static bool _send_options_req(sock_t c, rtsp_msg_t* rsp) {
 
 	rtsp_msg_t    req;
 	char*         msg;
@@ -37,11 +37,9 @@ static bool _send_options(sock_t c, rtsp_msg_t* rsp) {
 
 	if (_initialize_rtsp_req(&req, "OPTIONS")) {
 		msg     = rtsp_marshaller_msg(&req);
-		msg_len = strlen(msg) + 1;
+		msg_len = strlen(msg);
 
 		rtsp_send_msg(c, TYPE_OPTIONS_REQ, msg, msg_len, rsp);
-		cdk_free(msg);
-
 		rtsp_release_msg(&req);
 		return true;
 	}
@@ -54,7 +52,7 @@ void rtsp_handshake(void) {
 	c = cdk_tcp_dial(RTSP_SERVER_ADDRESS, RTSP_PORT);
 
 	rtsp_msg_t rsp;
-	_send_options(c, &rsp);
+	_send_options_req(c, &rsp);
 	rtsp_release_msg(&rsp);
 }
 

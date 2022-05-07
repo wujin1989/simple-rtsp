@@ -6,31 +6,23 @@ char* rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg) {
 	char* msg   = cdk_malloc(size);
 
 	if (rtsp_msg->type == TYPE_RTSP_REQ) {
-		strcpy(msg, rtsp_msg->msg.req.method);
-		strcat(msg, " ");
-		strcat(msg, rtsp_msg->msg.req.uri);
-		strcat(msg, " ");
-		strcat(msg, rtsp_msg->ver);
-		strcat(msg, "\r\n");
+
+		cdk_sprintf(msg, size, "%s %s %s\r\n", 
+			rtsp_msg->msg.req.method, rtsp_msg->msg.req.uri, rtsp_msg->ver);
 	}
 	else {
-		strcpy(msg, rtsp_msg->ver);
-		strcat(msg, " ");
-		char code_str[16];
-		cdk_sprintf(code_str, sizeof(code_str), "%d", rtsp_msg->msg.rsp.code);
-		strcat(msg, code_str);
-		strcat(msg, " ");
-		strcat(msg, rtsp_msg->msg.rsp.status);
-		strcat(msg, "\r\n");
+		cdk_sprintf(msg, size, "%s %d %s\r\n",
+			rtsp_msg->ver, rtsp_msg->msg.rsp.code, rtsp_msg->msg.rsp.status);
 	}
 	rtsp_attr_t* cur_attr = cdk_list_data(cdk_list_head(&rtsp_msg->attrs), rtsp_attr_t, node);
+	list_node_t* node     = &cur_attr->node;
 
-	while (cur_attr->node != cdk_list_sentinel(&rtsp_msg->attrs)) {
+	while (node != cdk_list_sentinel(&rtsp_msg->attrs)) {
 		strcat(msg, cur_attr->key);
 		strcat(msg, ": ");
 		strcat(msg, cur_attr->val);
 		strcat(msg, "\r\n");
-		cur_attr->node = cdk_list_next(cur_attr->node);
+		node = cdk_list_next(&cur_attr->node);
 	}
 	strcat(msg, "\r\n");
 	return msg;
@@ -38,6 +30,7 @@ char* rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg) {
 
 bool rtsp_parse_msg(rtsp_msg_t* rtsp_msg, char* rspbuf) {
 
+	cdk_free(rspbuf);
 
 	return true;
 }
@@ -48,9 +41,14 @@ void rtsp_send_msg(sock_t c, RTSP_MSG_TYPE reqtype, char* msg, int len, rtsp_msg
 	net_msg_t* rmsg;
 	int        sent;
 
-	smsg = cdk_tcp_marshaller(msg, reqtype, len);
-	sent = cdk_tcp_send(c, smsg);
-	if (sent != (smsg->h.p_s + sizeof(smsg->h))) {
+	/*smsg = cdk_tcp_marshaller(msg, reqtype, len);
+	sent = cdk_tcp_send2(c, smsg);*/
+	char buf[4096] = { 0 };
+	memcpy(buf, msg, len);
+	send(c, msg, len, 0);
+	cdk_free(msg);
+	
+	if (sent != len + sizeof(smsg->h)) {
 		cdk_loge("send rtsp msg failed\n");
 		return;
 	}
@@ -91,8 +89,8 @@ void rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val) {
 		cdk_free(attr);
 		return;
 	}
-	cdk_list_init_node(attr->node);
-	cdk_list_insert_tail(&rtsp_msg->attrs, attr->node);
+	cdk_list_init_node(&attr->node);
+	cdk_list_insert_tail(&rtsp_msg->attrs, &attr->node);
 }
 
 size_t rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg) {
@@ -116,7 +114,9 @@ size_t rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg) {
 	}
 	rtsp_attr_t* cur_attr = cdk_list_data(cdk_list_head(&rtsp_msg->attrs), rtsp_attr_t, node);
 
-	while (cur_attr->node != cdk_list_sentinel(&rtsp_msg->attrs)) {
+	list_node_t* node = &cur_attr->node;
+
+	while (node != cdk_list_sentinel(&rtsp_msg->attrs)) {
 		cnt += strlen(cur_attr->key);
 		cnt += strlen(cur_attr->val);
 
@@ -125,9 +125,9 @@ size_t rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg) {
 		cnt += SPACE_LEN;
 		cnt += CRLF_LEN;
 
-		cur_attr->node = cdk_list_next(cur_attr->node);
+		node = cdk_list_next(&cur_attr->node);
 	}
 	cnt += CRLF_LEN;
 
-	return 0;
+	return cnt;
 }

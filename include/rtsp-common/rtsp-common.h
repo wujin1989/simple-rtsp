@@ -26,13 +26,14 @@ typedef enum RTSP_MSG_TYPE {
 typedef struct rtsp_attr_t {
 	char*        key;
 	char*        val;
-	list_node_t* node;
+	list_node_t  node;
 }rtsp_attr_t;
 
 typedef struct rtsp_msg_t {
 	RTSP_MSG_TYPE type;
 	char*         ver;
 	list_t        attrs;
+	char*         payload;
 
     union {
         struct {
