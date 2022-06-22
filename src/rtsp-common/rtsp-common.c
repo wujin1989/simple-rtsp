@@ -1,5 +1,8 @@
 #include "rtsp-common/rtsp-common.h"
 
+#define TCPv4_SAFE_MSS    536
+#define TCPv6_SAFE_MSS    1220
+
 char* rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg) {
 
 	size_t size = rtsp_calc_msg_size(rtsp_msg);
@@ -35,34 +38,68 @@ bool rtsp_parse_msg(rtsp_msg_t* rtsp_msg, char* rspbuf) {
 	return true;
 }
 
-void rtsp_send_msg(sock_t c, RTSP_MSG_TYPE reqtype, char* msg, int len, rtsp_msg_t* rsp) {
+static char* _extendbuffer(char* buf, size_t size) {
 
-	net_msg_t* smsg;
-	net_msg_t* rmsg;
-	int        sent;
-
-	/*smsg = cdk_tcp_marshaller(msg, reqtype, len);
-	sent = cdk_tcp_send2(c, smsg);*/
-	char buf[4096] = { 0 };
-	memcpy(buf, msg, len);
-	send(c, msg, len, 0);
-	cdk_free(msg);
-	
-	if (sent != len + sizeof(smsg->h)) {
-		cdk_loge("send rtsp msg failed\n");
-		return;
+	char* new = realloc(buf, size);
+	if (new == NULL && buf != NULL) {
+		free(buf);
 	}
-	if (rsp) {
-		rmsg = cdk_tcp_recv(c);
-		if (rmsg == NULL) {
-			cdk_loge("recv rtsp msg failed\n");
-			return;
+	if (!new) {
+		abort();
+	}
+	return new;
+}
+
+int rtsp_send_msg(sock_t s, char* restrict msg, int len) {
+
+	uint32_t mss;
+	uint32_t st;    /* sent bytes */
+	uint32_t sz;    /* msg size */
+
+	mss = (_cdk_net_af(s) == AF_INET) ? TCPv4_SAFE_MSS : TCPv6_SAFE_MSS;
+	st = 0;
+	sz = len;
+
+	while (st < sz) {
+		int sd = ((sz - st) > mss) ? mss : (sz - st);
+		int r = send(s, &((const char*)msg)[st], sd, 0);
+		if (r <= 0) {
+			return st;
 		}
-		char* rspbuf = cdk_malloc(rmsg->h.p_s);
-		cdk_tcp_demarshaller(rmsg, rspbuf);
-
-		rtsp_parse_msg(rsp, rspbuf);
+		st += sd;
 	}
+	cdk_free(msg);
+	return sz;
+}
+
+char* rtsp_recv_msg(sock_t s) {
+
+	int   r;
+	int   len;
+	int   offset;
+	char* msg;
+
+	r = len = offset = 0;
+	msg = NULL;
+
+	while (true) {
+
+		if (offset >= len) {
+			len = offset + 4096;
+			msg = _extendbuffer(msg, len);
+		}
+		r = recv(s, &msg[offset], len - offset, 0);
+		if (r <= 0) {
+			return NULL;
+		}
+		offset += r;
+		/* rtsp msg end */
+		if (msg[offset - 1] == '\n' && msg[offset -2] == '\r' 
+			&& msg[offset - 3] == '\n' && msg[offset - 4] == '\r') {
+			break;
+		}
+	}
+	return msg;
 }
 
 void rtsp_release_msg(rtsp_msg_t* rtsp_msg) {

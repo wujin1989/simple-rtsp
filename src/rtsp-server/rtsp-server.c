@@ -16,43 +16,15 @@ static bool _send_options_rsp(sock_t s) {
 
 void handle_rtsp(sock_t s) {
 
-	net_msg_t* rmsg;
 	char*      msg;
 	bool       ret;
 
 	while (true) {
-		rmsg = cdk_tcp_recv(s);
-		if (!rmsg) {
+
+		msg = rtsp_recv_msg(s);
+		if (!msg) {
 			cdk_loge("network error.\n");
 			return;
-		}
-		msg = cdk_malloc(rmsg->h.p_s);
-
-		switch (rmsg->h.p_t) {
-		case TYPE_OPTIONS_REQ:
-		{
-			cdk_tcp_demarshaller(rmsg, msg);
-
-			ret = _parse_options(msg);
-			if (!ret) {
-				cdk_loge("parse options failed.\n");
-				cdk_free(msg);
-				return;
-			}
-			cdk_free(msg);
-			_send_options_rsp(s);
-			break;
-		}
-		case TYPE_DESCRIBE_REQ:
-			break;
-		case TYPE_SETUP_REQ:
-			break;
-		case TYPE_PLAY_REQ:
-			break;
-		case TYPE_TEARDOWN_REQ:
-			break;
-		default:
-			break;
 		}
 	}
 }

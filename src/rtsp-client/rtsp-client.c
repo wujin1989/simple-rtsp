@@ -32,14 +32,18 @@ static bool _initialize_rtsp_req(rtsp_msg_t* req, char* method) {
 static bool _send_options_req(sock_t c, rtsp_msg_t* rsp) {
 
 	rtsp_msg_t    req;
-	char*         msg;
-	size_t        msg_len;
+	char*         smsg;
+	char*         rmsg;
+	int           smsg_len;
 
 	if (_initialize_rtsp_req(&req, "OPTIONS")) {
-		msg     = rtsp_marshaller_msg(&req);
-		msg_len = strlen(msg);
+		smsg     = rtsp_marshaller_msg(&req);
+		smsg_len = strlen(smsg);
 
-		rtsp_send_msg(c, TYPE_OPTIONS_REQ, msg, msg_len, rsp);
+		rtsp_send_msg(c, smsg, smsg_len);
+
+		rmsg = rtsp_recv_msg(c);
+
 		rtsp_release_msg(&req);
 		return true;
 	}
