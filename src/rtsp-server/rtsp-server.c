@@ -16,15 +16,22 @@ static bool _send_options_rsp(sock_t s) {
 
 void handle_rtsp(sock_t s) {
 
-	char*      msg;
-	bool       ret;
+	char*       msg;
+	bool        ret;
+	rtsp_msg_t  req;
 
 	while (true) {
 
-		msg = rtsp_recv_msg(s);
+		msg = rtsp_recv_msg(s, true);
 		if (!msg) {
 			cdk_loge("network error.\n");
+			cdk_net_close(s);
 			return;
 		}
+		printf("recv: %s\n", msg);
+
+		rtsp_demarshaller_msg(&req, msg);
+
+		cdk_net_close(s);
 	}
 }

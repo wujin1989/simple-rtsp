@@ -21,21 +21,43 @@ char* rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg) {
 	list_node_t* node     = &cur_attr->node;
 
 	while (node != cdk_list_sentinel(&rtsp_msg->attrs)) {
-		strcat(msg, cur_attr->key);
-		strcat(msg, ": ");
-		strcat(msg, cur_attr->val);
-		strcat(msg, "\r\n");
+		cdk_strcat(msg, size, cur_attr->key);
+		cdk_strcat(msg, size, ": ");
+		cdk_strcat(msg, size, cur_attr->val);
+		cdk_strcat(msg, size, "\r\n");
 		node = cdk_list_next(&cur_attr->node);
 	}
-	strcat(msg, "\r\n");
+	cdk_strcat(msg, size, "\r\n");
 	return msg;
 }
 
-bool rtsp_parse_msg(rtsp_msg_t* rtsp_msg, char* rspbuf) {
+void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 
-	cdk_free(rspbuf);
+	/* response */
+	if (!strncmp(msg, "RTSP", strlen("RTSP"))) {
+	
+	}
+	else { /* request */
+		char* tmp;
+		char  method[64];
+		char  uri[64];
+		char  ver[64];
+		char* target;
 
-	return true;
+		memset(method, 0, sizeof(method));
+		memset(uri, 0, sizeof(uri));
+		memset(ver, 0, sizeof(ver));
+
+		rtsp_msg->type = TYPE_RTSP_REQ;
+
+		target = cdk_strtok(msg, "\r\n", &tmp);
+		while (target != NULL) {
+			cdk_sscanf(target, "%s %s %s\r\n", method, uri, ver);
+			target = cdk_strtok(NULL, "\r\n", &tmp);
+		}
+	}
+
+	cdk_free(msg);
 }
 
 static char* _extendbuffer(char* buf, size_t size) {
@@ -56,7 +78,7 @@ int rtsp_send_msg(sock_t s, char* restrict msg, int len) {
 	uint32_t st;    /* sent bytes */
 	uint32_t sz;    /* msg size */
 
-	mss = (_cdk_net_af(s) == AF_INET) ? TCPv4_SAFE_MSS : TCPv6_SAFE_MSS;
+	mss = (cdk_net_af(s) == AF_INET) ? TCPv4_SAFE_MSS : TCPv6_SAFE_MSS;
 	st = 0;
 	sz = len;
 
@@ -72,7 +94,7 @@ int rtsp_send_msg(sock_t s, char* restrict msg, int len) {
 	return sz;
 }
 
-char* rtsp_recv_msg(sock_t s) {
+char* rtsp_recv_msg(sock_t s, bool server) {
 
 	int   r;
 	int   len;
@@ -89,13 +111,19 @@ char* rtsp_recv_msg(sock_t s) {
 			msg = _extendbuffer(msg, len);
 		}
 		r = recv(s, &msg[offset], len - offset, 0);
-		if (r <= 0) {
-			return NULL;
+		if (r < 0) {
+			abort();
+		}
+		/* rtsp client msg end */
+		if (r == 0) {
+			break;
 		}
 		offset += r;
-		/* rtsp msg end */
-		if (msg[offset - 1] == '\n' && msg[offset -2] == '\r' 
-			&& msg[offset - 3] == '\n' && msg[offset - 4] == '\r') {
+		/* rtsp server msg end */
+		if (server 
+		 && msg[offset - 1] == '\n' 
+		 && msg[offset - 2] == '\r' 
+		 && msg[offset - 3] == '\n') {
 			break;
 		}
 	}
@@ -120,8 +148,8 @@ void rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val) {
 	rtsp_attr_t* attr;
 	attr = cdk_malloc(sizeof(rtsp_attr_t));
 
-	attr->key = strdup(key);
-	attr->val = strdup(val);
+	attr->key = cdk_strdup(key);
+	attr->val = cdk_strdup(val);
 	if (!attr->key || !attr->val) {
 		cdk_free(attr);
 		return;
