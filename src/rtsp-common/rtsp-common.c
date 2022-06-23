@@ -39,10 +39,11 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 	}
 	else { /* request */
 		char* tmp;
+		char* target;
 		char  method[64];
 		char  uri[64];
 		char  ver[64];
-		char* target;
+		char  cseq[64];
 
 		memset(method, 0, sizeof(method));
 		memset(uri, 0, sizeof(uri));

@@ -1,7 +1,7 @@
 #include "rtsp-server/rtsp-server.h"
 
 #define SERVER_IP    "0.0.0.0"
-#define RTSP_PORT    "554"
+#define RTSP_PORT    "8554"
 
 int main(void) {
 
