@@ -4,9 +4,7 @@
 int main(void) {
 
 	cdk_logger_init(NULL, true);
-
-	rtsp_handshake();
-
+	run_rtspclient();
 	cdk_logger_destroy();
 	return 0;
 }

@@ -3,12 +3,22 @@ _Pragma("once")
 #include "cdk.h"
 #include <string.h>
 
-#define CRLF_LEN        2
-#define SPACE_LEN       1
-#define COLON_LEN       1
+#define CRLF_LEN             2
+#define SPACE_LEN            1
+#define COLON_LEN            1
 
-#define TYPE_RTSP_REQ   0x4
-#define TYPE_RTSP_RSP   0x8
+#define TYPE_RTSP_REQ        0x4
+#define TYPE_RTSP_RSP        0x8
+
+#define USER_AGENT_ATTR      "simple-rtsp client"
+#define SERVER_ATTR          "simple-rtsp server"
+
+
+/* rtsp status code */
+#define RTSP_SUCCESS_CODE    "200"
+
+/* rtsp status string */
+#define RTSP_SUCCESS_STRING  "OK"
 
 typedef struct rtsp_attr_t {
 	char*        key;
@@ -29,7 +39,7 @@ typedef struct rtsp_msg_t {
         } req;
         struct {
             char* status;
-            int   code;
+            char* code;
         } rsp;
     } msg;
 }rtsp_msg_t;
