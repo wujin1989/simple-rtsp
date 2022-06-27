@@ -36,6 +36,11 @@ static bool _initialize_rtsp_req(rtsp_msg_t* req, const char* method) {
 		char* accept = "application/sdp";
 		rtsp_insert_attr(req, "Accept", accept);
 	}
+	if (!strncmp(method, "SETUP", strlen(method))) {
+
+		char* transport = "RTP/AVP;unicast;client_port=50000-50001";
+		rtsp_insert_attr(req, "Transport", transport);
+	}
 	return true;
 }
 
@@ -67,9 +72,47 @@ static bool _send_rtsp_req(rtsp_msg_t* rsp, const char* method) {
 	return false;
 }
 
-static void _rtsp_handshake(void) {
+static void _parse_sdp(char* strsdp, sdp_t* sdp) {
+
+	char* target;
+	char* tmp;
+	char  ap[64];
+	char  vp[64];
+	char  apt[64];
+	char  vpt[64];
+
+	memset(ap, 0, sizeof(ap));
+	memset(vp, 0, sizeof(vp));
+	memset(apt, 0, sizeof(apt));
+	memset(vpt, 0, sizeof(vpt));
+
+	target = cdk_strtok(strsdp, "\r\n", &tmp);
+	do {
+		if (target != NULL) {
+			if (!strncmp(target, "o=", strlen("o="))) {
+				sdp->saddr = cdk_strdup(strrchr(target, ' ') + 1);
+			}
+			if (!strncmp(target, "m=video", strlen("m=video"))) {
+				cdk_sscanf(target, "m=video %s RTP/AVP %s", vp, vpt);
+
+				sdp->svport = cdk_strdup(vp);
+				sdp->svpt   = cdk_strdup(vpt);
+			}
+			if (!strncmp(target, "m=audio", strlen("m=audio"))) {
+				cdk_sscanf(target, "m=audio %s RTP/AVP %s", ap, apt);
+
+				sdp->saport = cdk_strdup(ap);
+				sdp->sapt   = cdk_strdup(apt);
+			}
+			target = cdk_strtok(NULL, "\r\n", &tmp);
+		}
+	} while (target != NULL);
+}
+
+void run_rtspclient(void) {
 
 	rtsp_msg_t rsp;
+	sdp_t      sdp;
 
 	_send_rtsp_req(&rsp, "OPTIONS");
 	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
@@ -85,13 +128,16 @@ static void _rtsp_handshake(void) {
 		rtsp_release_msg(&rsp);
 		return;
 	}
+	_parse_sdp(rsp.payload, &sdp);
 	rtsp_release_msg(&rsp);
 
-}
-
-void run_rtspclient(void) {
-
-	_rtsp_handshake();
+	_send_rtsp_req(&rsp, "SETUP");
+	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
+		cdk_loge("setup request failed.\n");
+		rtsp_release_msg(&rsp);
+		return;
+	}
+	rtsp_release_msg(&rsp);
 }
 
 

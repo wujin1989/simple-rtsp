@@ -56,6 +56,18 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 		rtsp_insert_attr(rsp, "Content-Type", "application/sdp");
 		rtsp_insert_attr(rsp, "Content-Length", len);
 	}
+	if (!strncmp(rtsp_msg->msg.req.method, "SETUP", strlen("SETUP"))) {
+
+		char session[64];
+		
+		memset(session, 0, sizeof(session));
+		cdk_sprintf(session, sizeof(session), "%lld", time(NULL));
+
+		/* due to our a/v port given by DESCRIBE, thus here don't care. */
+		rtsp_insert_attr(rsp, "Transport", "RTP/AVP;unicast;client_port=50000-50001;server_port=60000-60001");
+		rtsp_insert_attr(rsp, "Session", session);
+		rsp->payload = NULL;
+	}
 	return true;
 }
 
@@ -92,7 +104,7 @@ static char* _generate_sdp(sock_t cfd, const char* aport, const char* vport) {
 		"s=simple-rtsp\r\n"
 		"t=0 0\r\n"
 		"m=video %s RTP/AVP 96\r\n"
-		"m=audio %s RTP/AVP 97\r\n", 
+		"m=audio %s RTP/AVP 97\r\n",
 		time(NULL), cdk_net_af(cfd) == AF_INET ? "IPv4" : "IPv6", ai.a, vport, aport);
 
 	return sdp;

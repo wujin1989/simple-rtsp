@@ -44,6 +44,14 @@ typedef struct rtsp_msg_t {
     } msg;
 }rtsp_msg_t;
 
+typedef struct sdp_t {
+    char*    saddr;  /* server address */
+    char*    saport; /* server audio udp port */
+    char*    svport; /* server video udp port */
+    char*    sapt;   /* supported audio payload */
+    char*    svpt;   /* supported video payload */
+}sdp_t;
+
 extern int         rtsp_send_msg(sock_t s, char* restrict msg, int len);
 extern char*       rtsp_recv_msg(sock_t s, bool server);
 extern void        rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val);

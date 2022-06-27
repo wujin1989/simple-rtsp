@@ -45,13 +45,30 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 	char  pub[64];
 	char  serv[64];
 	char  date[64];
+	char  ctype[64];
+	char  clen[64];
+	char  transport[64];
 
 	memset(cseq, 0, sizeof(cseq));
 	memset(ua, 0, sizeof(ua));
 	memset(pub, 0, sizeof(pub));
 	memset(serv, 0, sizeof(serv));
 	memset(date, 0, sizeof(date));
+	memset(ctype, 0, sizeof(ctype));
+	memset(clen, 0, sizeof(clen));
+	memset(transport, 0, sizeof(transport));
 
+	/* add payload. */
+	if (strstr(msg, "Content-Length")) {
+
+		target = strstr(msg, "\r\n\r\n");
+		if (target != NULL && target[4] != '\0') {
+			rtsp_msg->payload = cdk_strdup(target + 4);
+		}
+	}
+	else {
+		rtsp_msg->payload = NULL;
+	}
 	/* response */
 	if (!strncmp(msg, "RTSP", strlen("RTSP"))) {
 		char  code[64];
@@ -68,7 +85,6 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 			cdk_sscanf(target, "%s %s %s\r\n", ver, code, status);
 		}
 		rtsp_msg->type           = TYPE_RTSP_RSP;
-		rtsp_msg->payload        = NULL;
 		rtsp_msg->ver            = cdk_strdup(ver);
 		rtsp_msg->msg.rsp.code   = cdk_strdup(code);
 		rtsp_msg->msg.rsp.status = cdk_strdup(status);
@@ -88,7 +104,6 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 			cdk_sscanf(target, "%s %s %s\r\n", method, uri, ver);
 		}
 		rtsp_msg->type           = TYPE_RTSP_REQ;
-		rtsp_msg->payload        = NULL;
 		rtsp_msg->ver            = cdk_strdup(ver);
 		rtsp_msg->msg.req.method = cdk_strdup(method);
 		rtsp_msg->msg.req.uri    = cdk_strdup(uri);
@@ -102,30 +117,53 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 
 				cdk_sscanf(target, "CSeq: %s\r\n", cseq);
 				rtsp_insert_attr(rtsp_msg, "CSeq", cseq);
+				continue;
 			}
 			if (!strncmp(target, "User-Agent", strlen("User-Agent"))) {
 
 				cdk_sscanf(target, "User-Agent: %s\r\n", ua);
 				rtsp_insert_attr(rtsp_msg, "User-Agent", ua);
+				continue;
 			}
 			if (!strncmp(target, "Public", strlen("Public"))) {
 
 				cdk_sscanf(target, "Public: %s\r\n", pub);
 				rtsp_insert_attr(rtsp_msg, "Public", pub);
+				continue;
 			}
 			if (!strncmp(target, "Server", strlen("Server"))) {
 
 				cdk_sscanf(target, "Server: %s\r\n", serv);
 				rtsp_insert_attr(rtsp_msg, "Server", serv);
+				continue;
 			}
 			if (!strncmp(target, "Date", strlen("Date"))) {
 
 				cdk_sscanf(target, "Date: %s\r\n", date);
 				rtsp_insert_attr(rtsp_msg, "Date", date);
+				continue;
+			}
+			if (!strncmp(target, "Content-Type", strlen("Content-Type"))) {
+
+				cdk_sscanf(target, "Content-Type: %s\r\n", ctype);
+				rtsp_insert_attr(rtsp_msg, "Content-Type", ctype);
+				continue;
+			}
+			if (!strncmp(target, "Content-Length", strlen("Content-Length"))) {
+
+				cdk_sscanf(target, "Content-Length: %s\r\n", clen);
+				rtsp_insert_attr(rtsp_msg, "Content-Length", clen);
+				continue;
+			}
+			if (!strncmp(target, "Transport", strlen("Transport"))) {
+
+				cdk_sscanf(target, "Transport: %s\r\n", transport);
+				rtsp_insert_attr(rtsp_msg, "Transport", transport);
+				continue;
 			}
 		}
 	} while (target != NULL);
-
+	
 	cdk_free(msg);
 }
 
