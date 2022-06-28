@@ -19,7 +19,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 
 	for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-		rtsp_attr_t* attr = cdk_list_data(n, rtsp_attr_t, node);
+		general_attr_t* attr = cdk_list_data(n, general_attr_t, node);
 		if (!strncmp(attr->key, "CSeq", strlen("CSeq"))) {
 			cseq = attr->val;
 		}
@@ -50,6 +50,8 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 	if (!strncmp(rtsp_msg->msg.req.method, "DESCRIBE", strlen("DESCRIBE"))) {
 
 		char len[64];
+
+		memset(len, 0, sizeof(len));
 		rsp->payload = cdk_strdup(rtsp_msg->payload);
 		cdk_sprintf(len, sizeof(len), "%d", strlen(rsp->payload));
 
@@ -78,7 +80,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 		
 		for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-			rtsp_attr_t* attr = cdk_list_data(n, rtsp_attr_t, node);
+			general_attr_t* attr = cdk_list_data(n, general_attr_t, node);
 			if (!strncmp(attr->key, "Transport", strlen("Transport"))) {
 
 				memcpy(transport, attr->val, strlen(attr->val));
@@ -142,8 +144,7 @@ static char* _generate_sdp(sock_t cfd) {
 		"a=control:video\r\n"
 		"m=audio 0 RTP/AVP 97\r\n"
 		"a=rtpmap:97 OPUS/48000/2\r\n"
-		"a=control:audio\r\n"
-		"\r\n\r\n",
+		"a=control:audio\r\n",
 		time(NULL), cdk_net_af(cfd) == AF_INET ? "IPv4" : "IPv6", ai.a);
 
 	return sdp;

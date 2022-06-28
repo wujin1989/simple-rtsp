@@ -20,11 +20,11 @@ _Pragma("once")
 /* rtsp status string */
 #define RTSP_SUCCESS_STRING  "OK"
 
-typedef struct rtsp_attr_t {
+typedef struct general_attr_t {
 	char*        key;
 	char*        val;
 	list_node_t  node;
-}rtsp_attr_t;
+}general_attr_t;
 
 typedef struct rtsp_msg_t {
 	int           type;
@@ -44,18 +44,29 @@ typedef struct rtsp_msg_t {
     } msg;
 }rtsp_msg_t;
 
+typedef struct sdp_media_t {
+    char*      mtype;
+    uint8_t    ptype;
+    char*      tmode;
+    char*      trackid;
+    char*      codec;
+    uint32_t   samplerate;
+    uint8_t    channelnum;
+}sdp_media_t;
+
 typedef struct sdp_t {
-    char*    saddr;  /* server address */
-    char*    saport; /* server audio udp port */
-    char*    svport; /* server video udp port */
-    char*    sapt;   /* supported audio payload */
-    char*    svpt;   /* supported video payload */
+    char*        ver;
+    char*        server_addr;
+    char*        session;
+
+    sdp_media_t  video;
+    sdp_media_t  audio;
 }sdp_t;
 
-extern int         rtsp_send_msg(sock_t s, char* restrict msg, int len);
-extern char*       rtsp_recv_msg(sock_t s);
-extern void        rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val);
-extern size_t      rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg);
-extern char*       rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg);
-extern void        rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg);
-extern void        rtsp_release_msg(rtsp_msg_t* rtsp_msg);
+extern int    rtsp_send_msg(sock_t s, char* restrict msg, int len);
+extern char*  rtsp_recv_msg(sock_t s);
+extern void   rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val);
+extern size_t rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg);
+extern char*  rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg);
+extern void   rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg);
+extern void   rtsp_release_msg(rtsp_msg_t* rtsp_msg);
