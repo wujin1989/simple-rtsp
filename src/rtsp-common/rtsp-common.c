@@ -58,17 +58,7 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 	memset(clen, 0, sizeof(clen));
 	memset(transport, 0, sizeof(transport));
 
-	/* add payload. */
-	if (strstr(msg, "Content-Length")) {
-
-		target = strstr(msg, "\r\n\r\n");
-		if (target != NULL && target[4] != '\0') {
-			rtsp_msg->payload = cdk_strdup(target + 4);
-		}
-	}
-	else {
-		rtsp_msg->payload = NULL;
-	}
+	
 	/* response */
 	if (!strncmp(msg, "RTSP", strlen("RTSP"))) {
 		char  code[64];
@@ -79,6 +69,17 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 		memset(status, 0, sizeof(status));
 		memset(ver, 0, sizeof(ver));
 
+		/* add payload. */
+		if (strstr(msg, "Content-Type: application/sdp")) {
+
+			target = strstr(msg, "\r\n\r\n");
+			if (target != NULL) {
+				rtsp_msg->payload = cdk_strdup(target + strlen("\r\n\r\n"));
+			}
+		}
+		else {
+			rtsp_msg->payload = NULL;
+		}
 		/* parse code, status, version */
 		target = cdk_strtok(msg, "\r\n", &tmp);
 		if (target != NULL) {
@@ -103,6 +104,7 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 		if (target != NULL) {
 			cdk_sscanf(target, "%s %s %s\r\n", method, uri, ver);
 		}
+		rtsp_msg->payload        = NULL;
 		rtsp_msg->type           = TYPE_RTSP_REQ;
 		rtsp_msg->ver            = cdk_strdup(ver);
 		rtsp_msg->msg.req.method = cdk_strdup(method);
@@ -201,7 +203,7 @@ int rtsp_send_msg(sock_t s, char* restrict msg, int len) {
 	return sz;
 }
 
-char* rtsp_recv_msg(sock_t s, bool server) {
+char* rtsp_recv_msg(sock_t s) {
 
 	int   r;
 	int   len;
@@ -218,17 +220,21 @@ char* rtsp_recv_msg(sock_t s, bool server) {
 			msg = _extendbuffer(msg, len);
 		}
 		r = recv(s, &msg[offset], len - offset, 0);
-		if (r < 0) {
-			abort();
-		}
-		/* rtsp client msg end */
-		if (r == 0) {
-			break;
+		if (r <= 0) {
+			return NULL;
 		}
 		offset += r;
-		/* rtsp server msg end */
-		if (server 
-		 && msg[offset - 1] == '\n' 
+		/* rtsp describ response msg end */
+		if (msg[offset - 1] == '\n'
+		 && msg[offset - 2] == '\r'
+		 && msg[offset - 3] == '\n'
+		 && msg[offset - 4] == '\r'
+		 && msg[offset - 5] == '\n'
+		 && msg[offset - 6] == '\r') {
+			break;
+		}
+		/* rtsp msg end */
+		if (msg[offset - 1] == '\n' 
 		 && msg[offset - 2] == '\r' 
 		 && msg[offset - 3] == '\n') {
 			break;

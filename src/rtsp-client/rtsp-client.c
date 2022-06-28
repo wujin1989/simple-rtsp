@@ -44,15 +44,12 @@ static bool _initialize_rtsp_req(rtsp_msg_t* req, const char* method) {
 	return true;
 }
 
-static bool _send_rtsp_req(rtsp_msg_t* rsp, const char* method) {
+static bool _send_rtsp_req(sock_t c, rtsp_msg_t* rsp, const char* method) {
 
 	rtsp_msg_t    req;
 	char*         smsg;
 	char*         rmsg;
 	int           smsg_len;
-	sock_t        c;
-
-	c = cdk_tcp_dial(RTSP_SERVER_ADDRESS, RTSP_PORT);
 
 	if (_initialize_rtsp_req(&req, method)) {
 		smsg     = rtsp_marshaller_msg(&req);
@@ -60,15 +57,13 @@ static bool _send_rtsp_req(rtsp_msg_t* rsp, const char* method) {
 
 		rtsp_send_msg(c, smsg, smsg_len);
 
-		rmsg = rtsp_recv_msg(c, false);
+		rmsg = rtsp_recv_msg(c);
 		rtsp_demarshaller_msg(rsp, rmsg);
 
 		rtsp_release_msg(&req);
-		cdk_net_close(c);
 		return true;
 	}
 	rtsp_release_msg(&req);
-	cdk_net_close(c);
 	return false;
 }
 
@@ -113,8 +108,11 @@ void run_rtspclient(void) {
 
 	rtsp_msg_t rsp;
 	sdp_t      sdp;
+	sock_t     c;
 
-	_send_rtsp_req(&rsp, "OPTIONS");
+	c = cdk_tcp_dial(RTSP_SERVER_ADDRESS, RTSP_PORT);
+
+	_send_rtsp_req(c, &rsp, "OPTIONS");
 	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
 		cdk_loge("options request failed.\n");
 		rtsp_release_msg(&rsp);
@@ -122,7 +120,7 @@ void run_rtspclient(void) {
 	}
 	rtsp_release_msg(&rsp);
 
-	_send_rtsp_req(&rsp, "DESCRIBE");
+	_send_rtsp_req(c, &rsp, "DESCRIBE");
 	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
 		cdk_loge("describe request failed.\n");
 		rtsp_release_msg(&rsp);
@@ -131,13 +129,17 @@ void run_rtspclient(void) {
 	_parse_sdp(rsp.payload, &sdp);
 	rtsp_release_msg(&rsp);
 
-	_send_rtsp_req(&rsp, "SETUP");
+	_send_rtsp_req(c, &rsp, "SETUP");
 	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
 		cdk_loge("setup request failed.\n");
 		rtsp_release_msg(&rsp);
 		return;
 	}
 	rtsp_release_msg(&rsp);
+
+
+
+	cdk_net_close(c);
 }
 
 

@@ -53,7 +53,7 @@ typedef struct sdp_t {
 }sdp_t;
 
 extern int         rtsp_send_msg(sock_t s, char* restrict msg, int len);
-extern char*       rtsp_recv_msg(sock_t s, bool server);
+extern char*       rtsp_recv_msg(sock_t s);
 extern void        rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val);
 extern size_t      rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg);
 extern char*       rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg);
