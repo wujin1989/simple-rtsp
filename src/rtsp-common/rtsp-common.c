@@ -19,7 +19,7 @@ char* rtsp_marshaller_msg(rtsp_msg_t* rtsp_msg) {
 	}
 	for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-		general_attr_t* cur_attr = cdk_list_data(n, general_attr_t, node);
+		rtsp_attr_t* cur_attr = cdk_list_data(n, rtsp_attr_t, node);
 
 		cdk_strcat(msg, size, cur_attr->key);
 		cdk_strcat(msg, size, ": ");
@@ -221,7 +221,7 @@ char* rtsp_recv_msg(sock_t s) {
 	char*    msg;
 
 	r = offset = 0;
-	msg = cdk_malloc(100*1024);
+	msg = cdk_malloc(1024*1024);
 
 	while (true) {
 
@@ -235,7 +235,7 @@ char* rtsp_recv_msg(sock_t s) {
 		if (strstr(msg, "\r\n\r\n")) {
 			/* has payload. recv payload */
 			if (strstr(msg, "Content-Type: application/sdp")) {
-				/* calc payload length */
+				/* parse payload length */
 				char* tmp, *s1, *s3;
 				int   len;
 				char  s2[64];
@@ -277,7 +277,7 @@ void rtsp_release_msg(rtsp_msg_t* rtsp_msg) {
 	}
 	for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-		general_attr_t* attr = cdk_list_data(n, general_attr_t, node);
+		rtsp_attr_t* attr = cdk_list_data(n, rtsp_attr_t, node);
 		n = cdk_list_next(n);
 
 		cdk_free(attr->key);
@@ -288,8 +288,8 @@ void rtsp_release_msg(rtsp_msg_t* rtsp_msg) {
 
 void rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val) {
 
-	general_attr_t* attr;
-	attr = cdk_malloc(sizeof(general_attr_t));
+	rtsp_attr_t* attr;
+	attr = cdk_malloc(sizeof(rtsp_attr_t));
 
 	attr->key = cdk_strdup(key);
 	if (!attr->key) {
@@ -325,7 +325,7 @@ size_t rtsp_calc_msg_size(rtsp_msg_t* rtsp_msg) {
 	}
 	for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-		general_attr_t* cur_attr = cdk_list_data(n, general_attr_t, node);
+		rtsp_attr_t* cur_attr = cdk_list_data(n, rtsp_attr_t, node);
 
 		cnt += strlen(cur_attr->key);
 		cnt += strlen(cur_attr->val);

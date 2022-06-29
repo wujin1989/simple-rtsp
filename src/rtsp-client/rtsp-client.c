@@ -67,115 +67,15 @@ static bool _send_rtsp_req(sock_t c, rtsp_msg_t* rsp, const char* method) {
 	return false;
 }
 
-static void _parse_sdp(char* strsdp, sdp_t* sdp) {
-
-	char*    target;
-	char*    tmp;
-	uint8_t  ptype;
-	uint32_t samplerate;
-	uint8_t  channelnum;
-	char     tmode[64];
-	char     rtp_port[64];
-	char     codec[64];
-	char     trackid[64];
-
-	ptype = samplerate = channelnum = 0;
-	memset(tmode, 0, sizeof(tmode));
-	memset(rtp_port, 0, sizeof(rtp_port));
-	memset(codec, 0, sizeof(codec));
-	memset(trackid, 0, sizeof(trackid));
-
-	target = cdk_strtok(strsdp, "\r\n", &tmp);
-	if (target != NULL) {
-		if (!strncmp(target, "v=", strlen("v="))) {
-			sdp->ver = cdk_strdup(strrchr(target, '=') + 1);
-		}
-	}
-	do {
-		target = cdk_strtok(NULL, "\r\n", &tmp);
-		if (target != NULL) {
-			
-			if (!strncmp(target, "o=", strlen("o="))) {
-				sdp->server_addr = cdk_strdup(strrchr(target, ' ') + 1);
-				continue;
-			}
-			if (!strncmp(target, "s=", strlen("s="))) {
-				sdp->session = cdk_strdup(strrchr(target, '=') + 1);
-				continue;
-			}
-			if (!strncmp(target, "m=video", strlen("m=video"))) {
-				cdk_sscanf(target, "m=video %s %s %u", rtp_port, tmode, &ptype);
-
-				sdp->video.mtype    = cdk_strdup("video");
-				sdp->video.tmode    = cdk_strdup(tmode);
-				sdp->video.ptype    = ptype;
-
-				target = cdk_strtok(NULL, "\r\n", &tmp);
-				while (target != NULL) {
-					if (!strncmp(target, "a=", strlen("a="))) {
-						if (!strncmp(target, "a=rtpmap", strlen("a=rtpmap"))) {
-							char  p[64];
-							char* q;
-							
-							memset(p, 0, sizeof(p));
-							cdk_sscanf(target, "a=rtpmap:%u %s", &ptype, p);
-
-							q = strchr(p, '/');
-
-							sdp->video.codec      = cdk_strdup(codec);
-							sdp->video.samplerate = samplerate;
-
-						}
-						if (!strncmp(target, "a=control", strlen("a=control"))) {
-							cdk_sscanf(target, "a=control:%s", trackid);
-
-							sdp->video.trackid = cdk_strdup(trackid);
-						}
-						target = cdk_strtok(NULL, "\r\n", &tmp);
-					}
-					else {
-						break;
-					}
-				}
-			}
-			if (!strncmp(target, "m=audio", strlen("m=audio"))) {
-				cdk_sscanf(target, "m=audio %s %s %u", rtp_port, tmode, &ptype);
-
-				sdp->audio.mtype    = cdk_strdup("audio");
-				sdp->audio.tmode    = cdk_strdup(tmode);
-				sdp->audio.ptype    = ptype;
-				
-				target = cdk_strtok(NULL, "\r\n", &tmp);
-				while (target != NULL) {
-					if (!strncmp(target, "a=", strlen("a="))) {
-						if (!strncmp(target, "a=rtpmap", strlen("a=rtpmap"))) {
-							cdk_sscanf(target, "a=rtpmap:%s %[^/]%u/%u", &ptype, codec, &samplerate, &channelnum);
-
-							sdp->audio.codec      = cdk_strdup(codec);
-							sdp->audio.samplerate = samplerate;
-							sdp->audio.channelnum = channelnum;
-
-						}
-						if (!strncmp(target, "a=control", strlen("a=control"))) {
-							cdk_sscanf(target, "a=control:%s", trackid);
-
-							sdp->audio.trackid = cdk_strdup(trackid);
-						}
-						target = cdk_strtok(NULL, "\r\n", &tmp);
-					}
-					else {
-						break;
-					}
-				}
-			}
-		}
-	} while (target != NULL);
-}
+//static void _parse_sdp(char* strsdp, sdp_t* sdp) {
+//
+//	
+//}
 
 void run_rtspclient(void) {
 
 	rtsp_msg_t rsp;
-	sdp_t      sdp;
+	//sdp_t      sdp;
 	sock_t     c;
 
 	c = cdk_tcp_dial(RTSP_SERVER_ADDRESS, RTSP_PORT);
@@ -194,7 +94,7 @@ void run_rtspclient(void) {
 		rtsp_release_msg(&rsp);
 		return;
 	}
-	_parse_sdp(rsp.payload, &sdp);
+	//_parse_sdp(rsp.payload, &sdp);
 	rtsp_release_msg(&rsp);
 
 	_send_rtsp_req(c, &rsp, "SETUP");

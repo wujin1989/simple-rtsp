@@ -20,11 +20,11 @@ _Pragma("once")
 /* rtsp status string */
 #define RTSP_SUCCESS_STRING  "OK"
 
-typedef struct general_attr_t {
+typedef struct rtsp_attr_t {
 	char*        key;
 	char*        val;
 	list_node_t  node;
-}general_attr_t;
+}rtsp_attr_t;
 
 typedef struct rtsp_msg_t {
 	int           type;
@@ -43,25 +43,6 @@ typedef struct rtsp_msg_t {
         } rsp;
     } msg;
 }rtsp_msg_t;
-
-typedef struct sdp_media_t {
-    char*      mtype;
-    uint8_t    ptype;
-    char*      tmode;
-    char*      trackid;
-    char*      codec;
-    uint32_t   samplerate;
-    uint8_t    channelnum;
-}sdp_media_t;
-
-typedef struct sdp_t {
-    char*        ver;
-    char*        server_addr;
-    char*        session;
-
-    sdp_media_t  video;
-    sdp_media_t  audio;
-}sdp_t;
 
 extern int    rtsp_send_msg(sock_t s, char* restrict msg, int len);
 extern char*  rtsp_recv_msg(sock_t s);

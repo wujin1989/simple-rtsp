@@ -11,15 +11,15 @@ _Pragma("once")
 #define RTSP_VRTCP_PORT "9501"
 #define RTSP_ARTCP_PORT "9503"
 
-#define SDP_BUFFER_SIZE 1024
+#define SDP_BUFFER_SIZE 4096
 
 
 typedef struct rtsp_ctx {
 	sock_t cfd;
-	sock_t vrtp;
-	sock_t vrtcp;
-	sock_t artp;
-	sock_t artcp;
+	sock_t vrtpfd;
+	sock_t vrtcpfd;
+	sock_t artpfd;
+	sock_t artcpfd;
 }rtsp_ctx;
 
 extern void run_rtspserver(void);

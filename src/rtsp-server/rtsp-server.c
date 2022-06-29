@@ -19,7 +19,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 
 	for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-		general_attr_t* attr = cdk_list_data(n, general_attr_t, node);
+		rtsp_attr_t* attr = cdk_list_data(n, rtsp_attr_t, node);
 		if (!strncmp(attr->key, "CSeq", strlen("CSeq"))) {
 			cseq = attr->val;
 		}
@@ -80,7 +80,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 		
 		for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
-			general_attr_t* attr = cdk_list_data(n, general_attr_t, node);
+			rtsp_attr_t* attr = cdk_list_data(n, rtsp_attr_t, node);
 			if (!strncmp(attr->key, "Transport", strlen("Transport"))) {
 
 				memcpy(transport, attr->val, strlen(attr->val));
@@ -188,16 +188,16 @@ static int _handle_rtsp(void* arg) {
 void run_rtspserver(void) {
 
 	sock_t   cfd, sfd;
-	sock_t   vrtp, vrtcp;
-	sock_t   artp, artcp;
+	sock_t   vrtpfd, vrtcpfd;
+	sock_t   artpfd, artcpfd;
 	thrd_t   t;
 
 	sfd = cdk_tcp_listen(SERVER_IP, RTSP_PORT);
 
-	vrtp = cdk_udp_listen(SERVER_IP, RTSP_VRTP_PORT);
-	artp = cdk_udp_listen(SERVER_IP, RTSP_ARTP_PORT);
-	vrtcp = cdk_udp_listen(SERVER_IP, RTSP_VRTCP_PORT);
-	artcp = cdk_udp_listen(SERVER_IP, RTSP_ARTCP_PORT);
+	vrtpfd = cdk_udp_listen(SERVER_IP, RTSP_VRTP_PORT);
+	artpfd = cdk_udp_listen(SERVER_IP, RTSP_ARTP_PORT);
+	vrtcpfd = cdk_udp_listen(SERVER_IP, RTSP_VRTCP_PORT);
+	artcpfd = cdk_udp_listen(SERVER_IP, RTSP_ARTCP_PORT);
 
 	while (true) {
 
@@ -205,10 +205,10 @@ void run_rtspserver(void) {
 
 		rtsp_ctx ctx = {
 			.cfd   = cfd,
-			.vrtp  = vrtp,
-			.artp  = artp,
-			.vrtcp = vrtcp,
-			.artcp = artcp
+			.vrtpfd  = vrtpfd,
+			.artpfd  = artpfd,
+			.vrtcpfd = vrtcpfd,
+			.artcpfd = artcpfd
 		};
 
 		if (!cdk_thrd_create(&t, _handle_rtsp, &ctx)) {
