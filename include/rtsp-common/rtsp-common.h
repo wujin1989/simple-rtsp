@@ -10,10 +10,6 @@ _Pragma("once")
 #define TYPE_RTSP_REQ        0x4
 #define TYPE_RTSP_RSP        0x8
 
-#define USER_AGENT_ATTR      "simple-rtsp client"
-#define SERVER_ATTR          "simple-rtsp server"
-
-
 /* rtsp status code */
 #define RTSP_SUCCESS_CODE    "200"
 

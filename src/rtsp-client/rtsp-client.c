@@ -1,6 +1,7 @@
 #include "cdk.h"
 #include "rtsp-client/rtsp-client.h"
 #include "rtsp-common/rtsp-common.h"
+#include "rtsp-common/sdp.h"
 
 static bool _initialize_rtsp_req(rtsp_msg_t* req, const char* method) {
 
@@ -29,7 +30,7 @@ static bool _initialize_rtsp_req(rtsp_msg_t* req, const char* method) {
 		return false;
 	}
 	rtsp_insert_attr(req, "CSeq", cseq_str); 
-    rtsp_insert_attr(req, "User-Agent", USER_AGENT_ATTR);
+    rtsp_insert_attr(req, "User-Agent", "simple-rtsp client");
 
 	if (!strncmp(method, "DESCRIBE", strlen(method))) {
 
@@ -67,15 +68,10 @@ static bool _send_rtsp_req(sock_t c, rtsp_msg_t* rsp, const char* method) {
 	return false;
 }
 
-//static void _parse_sdp(char* strsdp, sdp_t* sdp) {
-//
-//	
-//}
-
 void run_rtspclient(void) {
 
 	rtsp_msg_t rsp;
-	//sdp_t      sdp;
+	sdp_t      sdp;
 	sock_t     c;
 
 	c = cdk_tcp_dial(RTSP_SERVER_ADDRESS, RTSP_PORT);
@@ -94,16 +90,22 @@ void run_rtspclient(void) {
 		rtsp_release_msg(&rsp);
 		return;
 	}
-	//_parse_sdp(rsp.payload, &sdp);
+	sdp_demarshaller_msg(rsp.payload, &sdp);
+
+	sdp_destroy(&sdp);
 	rtsp_release_msg(&rsp);
 
-	_send_rtsp_req(c, &rsp, "SETUP");
-	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
-		cdk_loge("setup request failed.\n");
+	for (int i = 0; i < sdp.media_num; i++) {
+		
+		_send_rtsp_req(c, &rsp, "SETUP");
+		if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
+			cdk_loge("setup request failed.\n");
+			rtsp_release_msg(&rsp);
+			return;
+		}
 		rtsp_release_msg(&rsp);
-		return;
 	}
-	rtsp_release_msg(&rsp);
+	
 
 
 

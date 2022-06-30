@@ -1,17 +1,25 @@
 #include "rtsp-server/rtsp-server.h"
 #include "rtsp-common/rtsp-common.h"
+#include "rtsp-common/sdp.h"
 
-static void _gmt_time(char* tmp) {
+static void _gmt_time(char* buf, int bufsz) {
 
 	struct tm tm;
 	time_t    t;
 
+	memset(buf, 0, bufsz);
 	t = time(NULL);
 	cdk_localtime(&t, &tm);
-	strftime(tmp, 64, "%a, %d %b %Y %H:%M:%S GMT", &tm);
+	strftime(buf, bufsz, "%a, %d %b %Y %H:%M:%S GMT", &tm);
 }
 
-static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
+static void _rtsp_itoa(char* buf, size_t bufsz, size_t n) {
+
+	memset(buf, 0, bufsz);
+	cdk_sprintf(buf, bufsz, "%zu", n);
+}
+
+static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx* pctx) {
 
 	/* parse general attr. (CSeq) */
 	char* cseq;
@@ -30,31 +38,33 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 	rsp->msg.rsp.code   = cdk_strdup(RTSP_SUCCESS_CODE);
 	rsp->msg.rsp.status = cdk_strdup(RTSP_SUCCESS_STRING);
 
-	char gtime[64];
-	memset(gtime, 0, sizeof(gtime));
-	_gmt_time(gtime);
-
 	cdk_list_create(&rsp->attrs);
 
+	char date[64];
+	_gmt_time(date, sizeof(date));
+
 	rtsp_insert_attr(rsp, "CSeq", cseq);
-	rtsp_insert_attr(rsp, "Date", gtime);
-	rtsp_insert_attr(rsp, "Server", SERVER_ATTR);
+	rtsp_insert_attr(rsp, "Date", date);
+	rtsp_insert_attr(rsp, "Server", "simple-rtsp server");
 
 	if (!strncmp(rtsp_msg->msg.req.method, "OPTIONS", strlen("OPTIONS"))) {
 
 		rsp->payload   = NULL;
-		char* smethods = "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY";
-
-		rtsp_insert_attr(rsp, "Public", smethods);
+		rtsp_insert_attr(rsp, "Public", "OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY");
 	}
 	if (!strncmp(rtsp_msg->msg.req.method, "DESCRIBE", strlen("DESCRIBE"))) {
 
-		char len[64];
+		char       len[64];
+		sdp_t      sdp;
+		addrinfo_t ai;
 
-		memset(len, 0, sizeof(len));
-		rsp->payload = cdk_strdup(rtsp_msg->payload);
-		cdk_sprintf(len, sizeof(len), "%d", strlen(rsp->payload));
+		cdk_net_obtain_addr(pctx->cfd, &ai, false);
+		sdp_create(&sdp, (ai.f == AF_INET ? "IP4" : "IP6"), ai.a);
 
+		rsp->payload = sdp_marshaller_msg(&sdp);
+		sdp_destroy(&sdp);
+		_rtsp_itoa(len, sizeof(len), strlen(rsp->payload));
+		
 		rtsp_insert_attr(rsp, "Content-Type", "application/sdp");
 		rtsp_insert_attr(rsp, "Content-Length", len);
 	}
@@ -101,53 +111,23 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg) {
 	return true;
 }
 
-static bool _send_rtsp_rsp(sock_t s, rtsp_msg_t* rtsp_msg) {
+static bool _send_rtsp_rsp(rtsp_ctx* pctx, rtsp_msg_t* rtsp_msg) {
 
 	rtsp_msg_t rsp;
 	char*      smsg;
 	int        smsg_len;
 
-	if (_initialize_rtsp_rsp(&rsp, rtsp_msg)) {
-		
-		if (rsp.payload != NULL) {
-			smsg     = rtsp_marshaller_msg(&rsp);
-			smsg_len = strlen(smsg);
-		}
-		else {
-			smsg     = rtsp_marshaller_msg(&rsp);
-			smsg_len = strlen(smsg);
-		}
-		rtsp_send_msg(s, smsg, smsg_len);
+	if (_initialize_rtsp_rsp(&rsp, rtsp_msg, pctx)) {
+		smsg = rtsp_marshaller_msg(&rsp);
+		smsg_len = strlen(smsg);
+
+		rtsp_send_msg(pctx->cfd, smsg, smsg_len);
 
 		rtsp_release_msg(&rsp);
 		return true;
 	}
 	rtsp_release_msg(&rsp);
 	return false;
-}
-
-static char* _generate_sdp(sock_t cfd) {
-
-	addrinfo_t ai;
-	char*      sdp; 
-	
-	sdp = cdk_malloc(SDP_BUFFER_SIZE);
-	cdk_net_obtain_addr(cfd, &ai, false);
-
-	cdk_sprintf(sdp, SDP_BUFFER_SIZE,
-		"v=0\r\n"
-		"o=- %lld 0 IN %s %s\r\n"
-		"s=simple-rtsp\r\n"
-		"t=0 0\r\n"
-		"m=video 0 RTP/AVP 96\r\n"
-		"a=rtpmap:96 H265/90000\r\n"
-		"a=control:video\r\n"
-		"m=audio 0 RTP/AVP 97\r\n"
-		"a=rtpmap:97 OPUS/48000/2\r\n"
-		"a=control:audio\r\n",
-		time(NULL), cdk_net_af(cfd) == AF_INET ? "IPv4" : "IPv6", ai.a);
-
-	return sdp;
 }
 
 static int _handle_rtsp(void* arg) {
@@ -170,14 +150,10 @@ static int _handle_rtsp(void* arg) {
 		}
 		rtsp_demarshaller_msg(&req, msg);
 
-		if (!strncmp(req.msg.req.method, "DESCRIBE", strlen("DESCRIBE"))) {
-
-			req.payload = _generate_sdp(ctx.cfd);
-		}
 		if (!strncmp(req.msg.req.method, "TEARDOWN", strlen("TEARDOWN"))) {
 
 		}
-		_send_rtsp_rsp(ctx.cfd, &req);
+		_send_rtsp_rsp(pctx, &req);
 
 		rtsp_release_msg(&req);
 	}
