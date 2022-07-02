@@ -185,14 +185,15 @@ void sdp_demarshaller_msg(char* payload, sdp_t* sdp) {
 
 			cdk_list_create(&sdp->media[sdp->media_num].attrs);
 
-			while (target = cdk_strtok(NULL, "\r\n", &tmp)) {
+			while ((target = cdk_strtok(NULL, "\r\n", &tmp))) {
 
 				if (!strncmp(target, "a=", strlen("a="))) {
 					p = strchr(target, '=');
 					p++;
-					memset(key, 0, sizeof(key));
-					memset(val, 0, sizeof(val));
-					cdk_sscanf(p, "%[^:]:%s", key, val);
+
+					char* temp;
+					char* key = cdk_strtok(p, ":", &temp);
+					char* val = cdk_strtok(NULL, ":", &temp);
 
 					sdp_insert_attr(&sdp->media[sdp->media_num].attrs, key, val);
 				}

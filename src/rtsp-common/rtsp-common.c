@@ -48,6 +48,7 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 	char  ctype[64];
 	char  clen[64];
 	char  transport[64];
+	char  session[64];
 
 	memset(cseq, 0, sizeof(cseq));
 	memset(ua, 0, sizeof(ua));
@@ -57,7 +58,7 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 	memset(ctype, 0, sizeof(ctype));
 	memset(clen, 0, sizeof(clen));
 	memset(transport, 0, sizeof(transport));
-
+	memset(session, 0, sizeof(session));
 	
 	/* response */
 	if (!strncmp(msg, "RTSP", strlen("RTSP"))) {
@@ -161,6 +162,12 @@ void rtsp_demarshaller_msg(rtsp_msg_t* rtsp_msg, char* msg) {
 
 				cdk_sscanf(target, "Transport: %s\r\n", transport);
 				rtsp_insert_attr(rtsp_msg, "Transport", transport);
+				continue;
+			}
+			if (!strncmp(target, "Session", strlen("Session"))) {
+
+				cdk_sscanf(target, "Session: %s\r\n", session);
+				rtsp_insert_attr(rtsp_msg, "Session", session);
 				continue;
 			}
 		}
@@ -286,7 +293,7 @@ void rtsp_release_msg(rtsp_msg_t* rtsp_msg) {
 	}
 }
 
-void rtsp_insert_attr(rtsp_msg_t* rtsp_msg, char* key, char* val) {
+void rtsp_insert_attr(rtsp_msg_t* rtsp_msg, const char* key, const char* val) {
 
 	rtsp_attr_t* attr;
 	attr = cdk_malloc(sizeof(rtsp_attr_t));

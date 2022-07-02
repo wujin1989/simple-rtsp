@@ -5,19 +5,20 @@ _Pragma("once")
 #define SERVER_IP       "0.0.0.0"
 #define RTSP_PORT       "8554"
 
-#define RTSP_VRTP_PORT "9500"
-#define RTSP_ARTP_PORT "9502"
+#define RTSP_VRTP_PORT  "20000"
+#define RTSP_ARTP_PORT  "20002"
 
-#define RTSP_VRTCP_PORT "9501"
-#define RTSP_ARTCP_PORT "9503"
+#define RTSP_VRTCP_PORT "20001"
+#define RTSP_ARTCP_PORT "20003"
 
 
-typedef struct rtsp_ctx {
-	sock_t cfd;
-	sock_t vrtpfd;
-	sock_t vrtcpfd;
-	sock_t artpfd;
-	sock_t artcpfd;
-}rtsp_ctx;
+typedef struct rtsp_ctx_t {
+	sock_t   conn;
+	sock_t   listen;
+	sock_t   video_rtp;
+	sock_t   video_rtcp;
+	sock_t   audio_rtp;
+	sock_t   audio_rtcp;
+}rtsp_ctx_t;
 
 extern void run_rtspserver(void);

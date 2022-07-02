@@ -19,7 +19,7 @@ static void _rtsp_itoa(char* buf, size_t bufsz, size_t n) {
 	cdk_sprintf(buf, bufsz, "%zu", n);
 }
 
-static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx* pctx) {
+static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx_t* pctx) {
 
 	/* parse general attr. (CSeq) */
 	char* cseq;
@@ -58,7 +58,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx
 		sdp_t      sdp;
 		addrinfo_t ai;
 
-		cdk_net_obtain_addr(pctx->cfd, &ai, false);
+		cdk_net_obtain_addr(pctx->conn, &ai, false);
 		sdp_create(&sdp, (ai.f == AF_INET ? "IP4" : "IP6"), ai.a);
 
 		rsp->payload = sdp_marshaller_msg(&sdp);
@@ -86,7 +86,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx
 
 			cdk_sprintf(serv_port, sizeof(serv_port), ";server_port=%s-%s", RTSP_ARTP_PORT, RTSP_ARTCP_PORT);
 		}
-		cdk_sprintf(session, sizeof(session), "%lld", time(NULL));
+		cdk_sprintf(session, sizeof(session), "%llu", cdk_timespec_get() / 1000);
 		
 		for (list_node_t* n = cdk_list_head(&rtsp_msg->attrs); n != cdk_list_sentinel(&rtsp_msg->attrs);) {
 
@@ -94,6 +94,11 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx
 			if (!strncmp(attr->key, "Transport", strlen("Transport"))) {
 
 				memcpy(transport, attr->val, strlen(attr->val));
+			}
+			if (!strncmp(attr->key, "Session", strlen("Session"))) {
+
+				memset(session, 0, sizeof(session));
+				memcpy(session, attr->val, strlen(attr->val));
 			}
 			n = cdk_list_next(n);
 		}
@@ -111,7 +116,7 @@ static bool _initialize_rtsp_rsp(rtsp_msg_t* rsp, rtsp_msg_t* rtsp_msg, rtsp_ctx
 	return true;
 }
 
-static bool _send_rtsp_rsp(rtsp_ctx* pctx, rtsp_msg_t* rtsp_msg) {
+static bool _send_rtsp_rsp(rtsp_ctx_t* pctx, rtsp_msg_t* rtsp_msg) {
 
 	rtsp_msg_t rsp;
 	char*      smsg;
@@ -121,7 +126,7 @@ static bool _send_rtsp_rsp(rtsp_ctx* pctx, rtsp_msg_t* rtsp_msg) {
 		smsg = rtsp_marshaller_msg(&rsp);
 		smsg_len = strlen(smsg);
 
-		rtsp_send_msg(pctx->cfd, smsg, smsg_len);
+		rtsp_send_msg(pctx->conn, smsg, smsg_len);
 
 		rtsp_release_msg(&rsp);
 		return true;
@@ -132,20 +137,20 @@ static bool _send_rtsp_rsp(rtsp_ctx* pctx, rtsp_msg_t* rtsp_msg) {
 
 static int _handle_rtsp(void* arg) {
 
-	char*       msg;
-	bool        ret;
-	rtsp_msg_t  req;
-	rtsp_ctx*   pctx;
-	rtsp_ctx    ctx;
+	char*         msg;
+	bool          ret;
+	rtsp_msg_t    req;
+	rtsp_ctx_t*   pctx;
+	rtsp_ctx_t    ctx;
 
 	pctx = arg;
 	ctx  = *pctx;
 
 	while (true) {
-		msg = rtsp_recv_msg(ctx.cfd);
+		msg = rtsp_recv_msg(ctx.conn);
 		if (!msg) {
 			cdk_loge("network error.\n");
-			cdk_net_close(ctx.cfd);
+			cdk_net_close(ctx.conn);
 			return -1;
 		}
 		rtsp_demarshaller_msg(&req, msg);
@@ -157,34 +162,38 @@ static int _handle_rtsp(void* arg) {
 
 		rtsp_release_msg(&req);
 	}
-	cdk_net_close(ctx.cfd);
+	cdk_net_close(ctx.conn);
 	return 0;
 }
 
 void run_rtspserver(void) {
 
-	sock_t   cfd, sfd;
-	sock_t   vrtpfd, vrtcpfd;
-	sock_t   artpfd, artcpfd;
+	sock_t   conn;
+	sock_t   listen;
+	sock_t   video_rtp;
+	sock_t   video_rtcp;
+	sock_t   audio_rtp;
+	sock_t   audio_rtcp;
 	thrd_t   t;
 
-	sfd = cdk_tcp_listen(SERVER_IP, RTSP_PORT);
+	listen = cdk_tcp_listen(SERVER_IP, RTSP_PORT);
 
-	vrtpfd = cdk_udp_listen(SERVER_IP, RTSP_VRTP_PORT);
-	artpfd = cdk_udp_listen(SERVER_IP, RTSP_ARTP_PORT);
-	vrtcpfd = cdk_udp_listen(SERVER_IP, RTSP_VRTCP_PORT);
-	artcpfd = cdk_udp_listen(SERVER_IP, RTSP_ARTCP_PORT);
+	video_rtp  = cdk_udp_listen(SERVER_IP, RTSP_VRTP_PORT);
+	audio_rtp  = cdk_udp_listen(SERVER_IP, RTSP_ARTP_PORT);
+	video_rtcp = cdk_udp_listen(SERVER_IP, RTSP_VRTCP_PORT);
+	audio_rtcp = cdk_udp_listen(SERVER_IP, RTSP_ARTCP_PORT);
 
 	while (true) {
 
-		cfd = cdk_tcp_accept(sfd);
+		conn = cdk_tcp_accept(listen);
 
-		rtsp_ctx ctx = {
-			.cfd   = cfd,
-			.vrtpfd  = vrtpfd,
-			.artpfd  = artpfd,
-			.vrtcpfd = vrtcpfd,
-			.artcpfd = artcpfd
+		rtsp_ctx_t ctx = {
+			.audio_rtcp   = audio_rtcp,
+			.audio_rtp    = audio_rtp,
+			.conn         = conn,
+			.listen       = listen,
+			.video_rtcp   = video_rtcp,
+			.video_rtp    = video_rtp
 		};
 
 		if (!cdk_thrd_create(&t, _handle_rtsp, &ctx)) {
@@ -192,6 +201,6 @@ void run_rtspserver(void) {
 		}
 		cdk_thrd_detach(t);
 	}
-	cdk_net_close(cfd);
-	cdk_net_close(sfd);
+	cdk_net_close(conn);
+	cdk_net_close(listen);
 }
