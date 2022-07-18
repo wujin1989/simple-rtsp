@@ -54,6 +54,10 @@ static bool _initialize_rtsp_req(rtsp_msg_t* req, const char* method, const char
 			rtsp_insert_attr(req, "Session", session);
 		}
 	}
+	if (!strncmp(method, "PLAY", strlen(method))) {
+
+		rtsp_insert_attr(req, "Session", session);
+	}
 	return true;
 }
 
@@ -76,8 +80,8 @@ static void _find_port(rtsp_msg_t* msg, rtsp_ctx_t* pctx, int idx) {
 			p += strlen(";server_port=");
 			cdk_sscanf(p, "%[^-]-%s", rtp, rtcp);
 
-			memcpy(pctx->media[idx].port.rtcp, rtcp, strlen(rtcp));
-			memcpy(pctx->media[idx].port.rtp, rtp, strlen(rtp));
+			memcpy(pctx->media[idx].port.rtcp, rtcp, sizeof(rtcp));
+			memcpy(pctx->media[idx].port.rtp, rtp, sizeof(rtp));
 		}
 	}
 }
@@ -145,6 +149,52 @@ static void _find_mediainfo(sdp_t* sdp, rtsp_ctx_t* pctx) {
 	}
 }
 
+static int _video_receive_thread(void* p) {
+
+	return 0;
+}
+
+static int _video_decode_thread(void* p) {
+
+	return 0;
+}
+
+static int _audio_receive_thread(void* p) {
+
+	return 0;
+}
+
+static int _audio_decode_thread(void* p) {
+
+	return 0;
+}
+
+static void _start_av_stream(rtsp_ctx_t* pctx, thrd_mng_t* mng) {
+
+	sock_t v_rtp;
+	sock_t v_rtcp;
+	sock_t a_rtp;
+	sock_t a_rtcp;
+
+	for (int i = 0; i < pctx->media_num; i++) {
+
+		if (!strncmp(pctx->media[i].type, "video", strlen("video"))) {
+
+			v_rtp  = cdk_udp_dial(RTSP_SERVER_ADDRESS, pctx->media[i].port.rtp);
+			v_rtcp = cdk_udp_dial(RTSP_SERVER_ADDRESS, pctx->media[i].port.rtcp);
+
+			cdk_thrd_create(&mng->v_rcv_thrd, _video_receive_thread, NULL);
+		}
+		if (!strncmp(pctx->media[i].type, "audio", strlen("audio"))) {
+
+			a_rtp  = cdk_udp_dial(RTSP_SERVER_ADDRESS, pctx->media[i].port.rtp);
+			a_rtcp = cdk_udp_dial(RTSP_SERVER_ADDRESS, pctx->media[i].port.rtcp);
+
+			cdk_thrd_create(&mng->a_rcv_thrd, _audio_receive_thread, NULL);
+		}
+	}
+}
+
 static bool _send_rtsp_req(rtsp_ctx_t* pctx, rtsp_msg_t* rsp, const char* method, const char* track) {
 
 	rtsp_msg_t    req;
@@ -174,7 +224,9 @@ void run_rtspclient(void) {
 	sdp_t      sdp;
 	sock_t     conn;
 	rtsp_ctx_t ctx;
+	thrd_mng_t mng;
 
+	memset(&mng, 0, sizeof(mng));
 	memset(&ctx, 0, sizeof(ctx));
 	conn = cdk_tcp_dial(RTSP_SERVER_ADDRESS, RTSP_PORT);
 
@@ -213,11 +265,20 @@ void run_rtspclient(void) {
 
 		rtsp_release_msg(&rsp);
 	}
-
-	// create rtp-rtcp socket and start recive thread.
-	// init decoder by codec name and start decode thread.
-
 	sdp_destroy(&sdp);
+
+	_start_av_stream(&ctx, &mng);
+
+	_send_rtsp_req(&ctx, &rsp, "PLAY", NULL);
+	if (strncmp(rsp.msg.rsp.code, RTSP_SUCCESS_CODE, strlen(RTSP_SUCCESS_CODE))) {
+		cdk_loge("play request failed.\n");
+		rtsp_release_msg(&rsp);
+		return;
+	}
+	rtsp_release_msg(&rsp);
+
+	cdk_thrd_join(mng.v_rcv_thrd);
+	cdk_thrd_join(mng.a_rcv_thrd);
 
 	cdk_net_close(conn);
 }

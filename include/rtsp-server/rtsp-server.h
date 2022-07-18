@@ -1,6 +1,7 @@
 _Pragma("once")
 
 #include "cdk.h"
+#include "rtsp-common/rtp.h"
 
 #define SERVER_IP       "0.0.0.0"
 #define RTSP_PORT       "8554"
@@ -21,4 +22,4 @@ typedef struct rtsp_ctx_t {
 	sock_t   audio_rtcp;
 }rtsp_ctx_t;
 
-extern void run_rtspserver(void);
+extern void run_rtspserver(nalu_queue_t* nalu_queue);

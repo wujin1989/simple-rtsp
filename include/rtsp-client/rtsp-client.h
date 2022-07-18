@@ -36,4 +36,10 @@ typedef struct rtsp_ctx_t {
 	
 }rtsp_ctx_t;
 
+typedef struct thrd_mng_t {
+
+	thrd_t v_rcv_thrd;
+	thrd_t a_rcv_thrd;
+}thrd_mng_t;
+
 extern void run_rtspclient(void);

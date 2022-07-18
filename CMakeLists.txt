@@ -26,24 +26,36 @@ link_directories(cdk/Debug)
 set(RTSP_CLIENT_HDRS
     include/rtsp-client/rtsp-client.h
     include/rtsp-common/rtsp-common.h
-    include/rtsp-common/sdp.h)
+    include/rtsp-common/sdp.h
+    include/rtsp-common/rtp.h
+    include/rtsp-common/nalu.h
+    include/rtsp-common/hevc.h)
 
 set(RTSP_SERVER_HDRS
     include/rtsp-server/rtsp-server.h
     include/rtsp-common/rtsp-common.h
-    include/rtsp-common/sdp.h)
+    include/rtsp-common/sdp.h
+    include/rtsp-common/rtp.h
+    include/rtsp-common/nalu.h
+    include/rtsp-common/hevc.h)
 
 set(RTSP_CLIENT_SRCS 
 	src/rtsp-client/main.c
     src/rtsp-client/rtsp-client.c
     src/rtsp-common/rtsp-common.c
-    src/rtsp-common/sdp.c)
+    src/rtsp-common/sdp.c
+    src/rtsp-common/rtp.c
+    src/rtsp-common/nalu.c
+    src/rtsp-common/hevc.c)
 
 set(RTSP_SERVER_SRCS 
 	src/rtsp-server/main.c
     src/rtsp-server/rtsp-server.c
     src/rtsp-common/rtsp-common.c
-    src/rtsp-common/sdp.c)
+    src/rtsp-common/sdp.c
+    src/rtsp-common/rtp.c
+    src/rtsp-common/nalu.c
+    src/rtsp-common/hevc.c)
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RTSP_CLIENT_HDRS} ${RTSP_SERVER_HDRS})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${RTSP_CLIENT_SRCS} ${RTSP_SERVER_SRCS})
